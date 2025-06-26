@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, MessageSquare, Edit3, Trash2, X, Check } from 'lucide-react';
 import { ChatSession } from '../types/chat';
+import { UserProfile } from './UserProfile';
 
 interface SidebarProps {
   sessions: ChatSession[];
@@ -115,6 +116,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <X size={18} className="text-gray-600 dark:text-gray-400" />
               </button>
             </div>
+
+            {/* User Profile */}
+            <UserProfile />
 
             {/* Sessions List */}
             <div className="flex-1 overflow-y-auto p-3">

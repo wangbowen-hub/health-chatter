@@ -8,6 +8,7 @@ import { ChatSession, Message } from '../types/chat';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { createDifyService } from '../config/dify';
 import DifyApiService from '../services/difyApi';
+import { useAuth } from '../contexts/AuthContext';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -23,7 +24,8 @@ const createNewSession = (): ChatSession => ({
 const generateAIResponse = async (
   userMessage: string, 
   sessionId: string, 
-  difyService: DifyApiService | null
+  difyService: DifyApiService | null,
+  username?: string
 ): Promise<string> => {
   if (!difyService) {
     // 如果没有配置Dify服务，返回模拟回复
@@ -40,7 +42,9 @@ const generateAIResponse = async (
   }
 
   try {
-    const response = await difyService.sendMessage(userMessage, sessionId);
+    const response = await difyService.sendMessage(userMessage, sessionId, {
+      user: username || 'anonymous'
+    });
     return response.answer || "抱歉，我没有收到有效的回复。";
   } catch (error) {
     console.error('Dify API调用失败:', error);
@@ -49,6 +53,7 @@ const generateAIResponse = async (
 };
 
 export const ChatInterface: React.FC = () => {
+  const { user } = useAuth();
   const [sessions, setSessions] = useLocalStorage<ChatSession[]>('chat-sessions', []);
   const [currentSessionId, setCurrentSessionId] = useLocalStorage<string | null>('current-session-id', null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -120,7 +125,7 @@ export const ChatInterface: React.FC = () => {
       // 生成AI回复
       setTimeout(async () => {
         try {
-          const aiResponse = await generateAIResponse(content, newSession.id, difyServiceRef.current);
+          const aiResponse = await generateAIResponse(content, newSession.id, difyServiceRef.current, user?.username || 'anonymous');
           const aiMessage: Message = {
             id: generateId(),
             content: aiResponse,
@@ -188,7 +193,7 @@ export const ChatInterface: React.FC = () => {
     // 生成AI回复
     setTimeout(async () => {
       try {
-        const aiResponse = await generateAIResponse(content, currentSessionId, difyServiceRef.current);
+        const aiResponse = await generateAIResponse(content, currentSessionId, difyServiceRef.current, user?.username || 'anonymous');
         const aiMessage: Message = {
           id: generateId(),
           content: aiResponse,
