@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, LoginFormData } from '../types/chat';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { systemUsers } from '../data/systemUsers';
 
 interface AuthContextType {
   user: User | null;
@@ -23,15 +24,6 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// 模拟用户数据库
-const mockUsers = [
-  { username: 'admin', password: 'admin123', email: 'admin@example.com' },
-  { username: 'user', password: 'user123', email: 'user@example.com' },
-  { username: 'demo', password: 'demo123', email: 'demo@example.com' },
-];
-
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useLocalStorage<User | null>('current-user', null);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,14 +43,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // 模拟API调用延迟
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 验证用户凭证
-      const foundUser = mockUsers.find(
+      // 使用系统用户进行验证
+      const foundUser = systemUsers.find(
         u => u.username === loginData.username && u.password === loginData.password
       );
       
       if (foundUser) {
         const newUser: User = {
-          id: generateId(),
+          id: foundUser.id,
           username: foundUser.username,
           email: foundUser.email,
           loginTime: new Date(),

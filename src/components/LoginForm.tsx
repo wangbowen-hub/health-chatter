@@ -123,11 +123,10 @@ export const LoginForm: React.FC = () => {
 
           <div className="text-center">
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              <p className="mb-2">测试账户：</p>
+              <p className="mb-2">系统用户账号：</p>
               <div className="space-y-1 text-xs">
-                <p>管理员: admin / admin123</p>
-                <p>用户: user / user123</p>
-                <p>演示: demo / demo123</p>
+                <p>张三: zhangsan / zhang123</p>
+                <p>李四: lisi / li123456</p>
               </div>
             </div>
           </div>

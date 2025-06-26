@@ -1,8 +1,12 @@
 import React from 'react';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-export const UserProfile: React.FC = () => {
+interface UserProfileProps {
+  onNewSession?: () => void;
+}
+
+export const UserProfile: React.FC<UserProfileProps> = ({ onNewSession }) => {
   const { user, logout } = useAuth();
 
   if (!user) return null;
@@ -39,6 +43,16 @@ export const UserProfile: React.FC = () => {
       >
         <LogOut className="h-4 w-4" />
       </button>
+      
+      {onNewSession && (
+        <button
+          onClick={onNewSession}
+          className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          title="新对话"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 };

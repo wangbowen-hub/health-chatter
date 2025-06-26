@@ -9,12 +9,14 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { createDifyService } from '../config/dify';
 import DifyApiService from '../services/difyApi';
 import { useAuth } from '../contexts/AuthContext';
+import { getSystemUserByUsername } from '../data/systemUsers';
+import { cleanThinkTags, generateChatTitle, generateTimeBasedTitle } from '../utils/messageUtils';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 const createNewSession = (): ChatSession => ({
   id: generateId(),
-  title: '新对话',
+  title: generateTimeBasedTitle(new Date()),
   messages: [],
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -25,7 +27,8 @@ const generateAIResponse = async (
   userMessage: string, 
   sessionId: string, 
   difyService: DifyApiService | null,
-  username?: string
+  username?: string,
+  onChunk?: (chunk: string) => void
 ): Promise<string> => {
   if (!difyService) {
     // 如果没有配置Dify服务，返回模拟回复
@@ -37,15 +40,88 @@ const generateAIResponse = async (
       "基于当前的信息，我建议您可以考虑以下方案...",
     ];
     
-    return responses[Math.floor(Math.random() * responses.length)] + 
+    const response = responses[Math.floor(Math.random() * responses.length)] + 
            "\n\n（模拟回复 - 请在.env文件中配置VITE_DIFY_API_KEY以获得真实AI回复）";
+    
+    // 模拟流式输出
+    if (onChunk) {
+      // 清理 think 标签
+      const cleanedResponse = cleanThinkTags(response);
+      const words = cleanedResponse.split(' ');
+      for (let i = 0; i < words.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        onChunk(words[i] + (i < words.length - 1 ? ' ' : ''));
+      }
+      return cleanedResponse;
+    }
+    
+    return cleanThinkTags(response);
   }
 
   try {
-    const response = await difyService.sendMessage(userMessage, sessionId, {
-      user: username || 'anonymous'
-    });
-    return response.answer || "抱歉，我没有收到有效的回复。";
+    // 获取系统用户信息，以便获取病历表文件路径
+    const systemUser = username ? getSystemUserByUsername(username) : null;
+    const medicalRecordFile = systemUser?.medicalRecordFile;
+
+    // 使用流式API
+    if (onChunk) {
+      let fullResponse = '';
+      let rawContent = ''; // 累积原始内容
+      let displayedContent = ''; // 已显示的内容
+      
+      await difyService.sendMessageStream(
+        userMessage, 
+        sessionId, 
+        (chunk: string) => {
+          rawContent += chunk; // 累积原始内容
+          
+          // 检查是否有未闭合的 <think> 标签
+          const openThinkIndex = rawContent.lastIndexOf('<think>');
+          const closeThinkIndex = rawContent.lastIndexOf('</think>');
+          
+          let contentToProcess = rawContent;
+          
+          // 如果有未闭合的 <think> 标签，暂时保留该部分
+          if (openThinkIndex > closeThinkIndex && openThinkIndex !== -1) {
+            // 只处理到 <think> 标签之前的内容
+            contentToProcess = rawContent.substring(0, openThinkIndex);
+          }
+          
+          // 清理完整的 think 标签
+          const cleanedContent = cleanThinkTags(contentToProcess);
+          
+          // 计算新增的内容
+          if (cleanedContent.length > displayedContent.length) {
+            const newContent = cleanedContent.substring(displayedContent.length);
+            displayedContent = cleanedContent;
+            fullResponse = cleanedContent;
+            onChunk(newContent);
+          }
+        },
+        {
+          user: username || 'anonymous',
+          medicalRecordFile: medicalRecordFile
+        }
+      );
+      
+      // 处理最后可能遗留的内容
+      const finalCleaned = cleanThinkTags(rawContent);
+      if (finalCleaned.length > displayedContent.length) {
+        const remainingContent = finalCleaned.substring(displayedContent.length);
+        onChunk(remainingContent);
+        fullResponse = finalCleaned;
+      }
+      
+      return fullResponse;
+    } else {
+      // 如果没有提供onChunk回调，使用阻塞式API
+      const response = await difyService.sendMessage(userMessage, sessionId, {
+        user: username || 'anonymous',
+        medicalRecordFile: medicalRecordFile
+      });
+      // 清理阻塞式响应中的 think 标签
+      return cleanThinkTags(response.answer || "抱歉，我没有收到有效的回复。");
+    }
   } catch (error) {
     console.error('Dify API调用失败:', error);
     return "抱歉，AI服务暂时不可用，请稍后重试。";
@@ -54,11 +130,17 @@ const generateAIResponse = async (
 
 export const ChatInterface: React.FC = () => {
   const { user } = useAuth();
-  const [sessions, setSessions] = useLocalStorage<ChatSession[]>('chat-sessions', []);
-  const [currentSessionId, setCurrentSessionId] = useLocalStorage<string | null>('current-session-id', null);
+  
+  // 为每个用户创建独立的存储键
+  const sessionsKey = user ? `chat-sessions-${user.id}` : 'chat-sessions-guest';
+  const currentSessionKey = user ? `current-session-${user.id}` : 'current-session-guest';
+  const hideMessagesKey = user ? `hide-messages-${user.id}` : 'hide-messages-guest';
+  
+  const [sessions, setSessions] = useLocalStorage<ChatSession[]>(sessionsKey, []);
+  const [currentSessionId, setCurrentSessionId] = useLocalStorage<string | null>(currentSessionKey, null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [hideMessages, setHideMessages] = useLocalStorage<boolean>('hide-messages', false);
+  const [hideMessages, setHideMessages] = useLocalStorage<boolean>(hideMessagesKey, false);
   const difyServiceRef = useRef<DifyApiService | null>(createDifyService());
 
   // 使用 useMemo 来获取当前会话，确保状态更新后能立即反映
@@ -66,6 +148,19 @@ export const ChatInterface: React.FC = () => {
     sessions.find(s => s.id === currentSessionId), 
     [sessions, currentSessionId]
   );
+
+  // 当用户切换时，重置聊天状态
+  React.useEffect(() => {
+    // 当用户变化时，重新初始化状态
+    const newSessionsKey = user ? `chat-sessions-${user.id}` : 'chat-sessions-guest';
+    const newCurrentSessionKey = user ? `current-session-${user.id}` : 'current-session-guest';
+    
+    // 如果键发生变化，说明用户已切换
+    if (newSessionsKey !== sessionsKey || newCurrentSessionKey !== currentSessionKey) {
+      // 清除当前的会话ID，让用户看到属于他们的聊天记录
+      setCurrentSessionId(null);
+    }
+  }, [user?.id]);
 
   const handleNewSession = useCallback(() => {
     const newSession = createNewSession();
@@ -113,7 +208,7 @@ export const ChatInterface: React.FC = () => {
       };
       
       newSession.messages = [userMessage];
-      newSession.title = content.length > 30 ? content.substring(0, 30) + '...' : content;
+      newSession.title = generateChatTitle(content);
       
       flushSync(() => {
         setSessions(prev => [newSession, ...prev]);
@@ -125,14 +220,15 @@ export const ChatInterface: React.FC = () => {
       // 生成AI回复
       setTimeout(async () => {
         try {
-          const aiResponse = await generateAIResponse(content, newSession.id, difyServiceRef.current, user?.username || 'anonymous');
+          // 先创建一个空的AI消息
           const aiMessage: Message = {
             id: generateId(),
-            content: aiResponse,
+            content: '',
             role: 'assistant',
             timestamp: new Date(),
           };
           
+          // 立即添加空消息到会话中
           setSessions(prev => prev.map(session => 
             session.id === newSession.id 
               ? { 
@@ -142,6 +238,30 @@ export const ChatInterface: React.FC = () => {
                 }
               : session
           ));
+          
+          // 使用流式响应逐步更新消息内容
+          await generateAIResponse(
+            content, 
+            newSession.id, 
+            difyServiceRef.current, 
+            user?.username || 'anonymous',
+            (chunk: string) => {
+              // 更新消息内容
+              setSessions(prev => prev.map(session => 
+                session.id === newSession.id 
+                  ? { 
+                      ...session, 
+                      messages: session.messages.map(msg => 
+                        msg.id === aiMessage.id 
+                          ? { ...msg, content: msg.content + chunk }
+                          : msg
+                      ),
+                      updatedAt: new Date()
+                    }
+                  : session
+              ));
+            }
+          );
         } catch (error) {
           console.error('AI回复生成失败:', error);
           const errorMessage: Message = {
@@ -162,7 +282,7 @@ export const ChatInterface: React.FC = () => {
           ));
         }
         setIsProcessing(false);
-      }, 1000 + Math.random() * 2000);
+      }, 500); // 减少延迟，让流式输出更快开始
       
       return;
     }
@@ -175,12 +295,19 @@ export const ChatInterface: React.FC = () => {
       timestamp: new Date(),
     };
 
+    // 检查是否是对话的第一条消息，如果是则更新标题
+    const isFirstMessage = currentSession?.messages.length === 0;
+    const newTitle = isFirstMessage 
+      ? generateChatTitle(content)
+      : currentSession?.title;
+
     // 使用 flushSync 确保用户消息立即显示
     flushSync(() => {
       setSessions(prev => prev.map(session => 
         session.id === currentSessionId 
           ? { 
               ...session, 
+              title: newTitle || session.title,
               messages: [...session.messages, userMessage],
               updatedAt: new Date()
             }
@@ -193,14 +320,15 @@ export const ChatInterface: React.FC = () => {
     // 生成AI回复
     setTimeout(async () => {
       try {
-        const aiResponse = await generateAIResponse(content, currentSessionId, difyServiceRef.current, user?.username || 'anonymous');
+        // 先创建一个空的AI消息
         const aiMessage: Message = {
           id: generateId(),
-          content: aiResponse,
+          content: '',
           role: 'assistant',
           timestamp: new Date(),
         };
 
+        // 立即添加空消息到会话中
         setSessions(prev => prev.map(session => 
           session.id === currentSessionId 
             ? { 
@@ -210,6 +338,30 @@ export const ChatInterface: React.FC = () => {
               }
             : session
         ));
+
+        // 使用流式响应逐步更新消息内容
+        await generateAIResponse(
+          content, 
+          currentSessionId, 
+          difyServiceRef.current, 
+          user?.username || 'anonymous',
+          (chunk: string) => {
+            // 更新消息内容
+            setSessions(prev => prev.map(session => 
+              session.id === currentSessionId 
+                ? { 
+                    ...session, 
+                    messages: session.messages.map(msg => 
+                      msg.id === aiMessage.id 
+                        ? { ...msg, content: msg.content + chunk }
+                        : msg
+                    ),
+                    updatedAt: new Date()
+                  }
+                : session
+            ));
+          }
+        );
       } catch (error) {
         console.error('AI回复生成失败:', error);
         const errorMessage: Message = {
@@ -230,7 +382,7 @@ export const ChatInterface: React.FC = () => {
         ));
       }
       setIsProcessing(false);
-    }, 1000 + Math.random() * 2000);
+    }, 500); // 减少延迟，让流式输出更快开始
   }, [currentSessionId, setSessions, setCurrentSessionId]);
 
   // Initialize with a session if none exists

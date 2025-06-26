@@ -17,6 +17,20 @@ interface MessageContentProps {
 const MessageContent: React.FC<MessageContentProps> = ({ content }) => {
   const { cleanedContent, hasMarkdown } = processMessageContent(content);
 
+  // 如果内容为空，显示加载动画
+  if (!content || content.trim() === '') {
+    return (
+      <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+        <div className="flex gap-1">
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        </div>
+        <span className="text-sm">正在思考...</span>
+      </div>
+    );
+  }
+
   if (hasMarkdown) {
     return (
       <ReactMarkdown
@@ -169,34 +183,6 @@ export const MessageList: React.FC<MessageListProps> = ({
               </div>
             </div>
           ))}
-
-          {/* Processing indicator */}
-          {isProcessing && (
-            <div className="group">
-              <div className="flex gap-4 items-start">
-                <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
-                  <Bot size={18} className="text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="font-semibold text-gray-900 dark:text-white text-sm">
-                      Health Chatter
-                    </span>
-                  </div>
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4">
-                    <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
-                      <span className="text-sm">正在思考...</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
       <div ref={messagesEndRef} />

@@ -79,11 +79,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {isCollapsed ? (
           /* Collapsed state */
           <div className="flex flex-col items-center py-4 space-y-4">
-                         <button
-               onClick={onNewSession}
-               className="p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
-               title="新对话"
-             >
+            <button
+              onClick={onNewSession}
+              className="p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
+              title="新对话"
+            >
               <Plus size={20} />
             </button>
             
@@ -100,25 +100,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ) : (
           /* Expanded state */
           <>
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800">
-              <button
-                onClick={onNewSession}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
-              >
-                <Plus size={16} />
-                新对话
-              </button>
+            {/* Header with close button for mobile */}
+            <div className="flex items-center justify-end p-4 bg-gray-50 dark:bg-gray-800 md:hidden">
               <button
                 onClick={onClose}
-                className="md:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
               >
                 <X size={18} className="text-gray-600 dark:text-gray-400" />
               </button>
             </div>
 
             {/* User Profile */}
-            <UserProfile />
+            <UserProfile onNewSession={onNewSession} />
 
             {/* Sessions List */}
             <div className="flex-1 overflow-y-auto p-3">
