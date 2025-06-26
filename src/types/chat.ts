@@ -26,29 +26,3 @@ export interface LoginFormData {
   username: string;
   password: string;
 }
-// 添加用户相关类型定义
-export interface User {
-  id: string;
-  username: string;
-  email?: string;
-  avatar?: string;
-  loginTime: Date;
-}
-
-export interface LoginFormData {
-  username: string;
-  password: string;
-}
-// 添加用户相关类型定义
-export interface User {
-  id: string;
-  username: string;
-  email?: string;
-  avatar?: string;
-  loginTime: Date;
-}
-
-export interface LoginFormData {
-  username: string;
-  password: string;
-}
