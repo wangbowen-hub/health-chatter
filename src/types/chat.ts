@@ -12,3 +12,24 @@ export interface ChatSession {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// 新增用户相关类型
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  createdAt: Date;
+  lastLoginAt: Date;
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+  expiresAt: Date;
+}
