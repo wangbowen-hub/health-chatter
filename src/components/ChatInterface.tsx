@@ -100,6 +100,9 @@ const generateAIResponse = async (
         },
         {
           user: username || 'anonymous',
+          inputs: {
+            topic_id: systemUser?.topicId || "default"
+          },
           medicalRecordFile: medicalRecordFile
         }
       );
@@ -117,6 +120,9 @@ const generateAIResponse = async (
       // 如果没有提供onChunk回调，使用阻塞式API
       const response = await difyService.sendMessage(userMessage, sessionId, {
         user: username || 'anonymous',
+        inputs: {
+          topic_id: systemUser?.topicId || "default"
+        },
         medicalRecordFile: medicalRecordFile
       });
       // 清理阻塞式响应中的 think 标签

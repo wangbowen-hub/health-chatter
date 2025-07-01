@@ -8,6 +8,7 @@ export interface SystemUser {
   age: number;
   gender: 'male' | 'female';
   medicalRecordFile: string; // 对应的病历表文件路径
+  topicId: string; // Dify API 请求时使用的 topic_id
 }
 
 // 预定义的系统用户
@@ -20,7 +21,8 @@ export const systemUsers: SystemUser[] = [
     name: '张三',
     age: 35,
     gender: 'male',
-    medicalRecordFile: '/patient-records/1.pdf'
+    medicalRecordFile: '/patient-records/1.pdf',
+    topicId: 'stomach' // 张三的 topic_id
   },
   {
     id: 'user-002',
@@ -30,7 +32,8 @@ export const systemUsers: SystemUser[] = [
     name: '李四',
     age: 28,
     gender: 'female',
-    medicalRecordFile: '/patient-records/2.pdf'
+    medicalRecordFile: '/patient-records/2.pdf',
+    topicId: 'bone' // 李四的 topic_id
   }
 ];
 

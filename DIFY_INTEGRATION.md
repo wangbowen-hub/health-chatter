@@ -101,6 +101,15 @@ VITE_DIFY_BASE_URL=https://api.dify.ai/v1
 - `user`: 用户标识符 (默认: 'default-user')
 - `inputs`: 额外的输入参数 (可选)
 
+### 关于inputs参数
+应用在所有API请求中都会自动添加以下inputs参数：
+```json
+{
+  "topic_id": "123456"
+}
+```
+这个参数会传递给Dify应用，可以在工作流中使用。如需修改或添加其他inputs参数，请编辑 `src/components/ChatInterface.tsx` 文件中的相关代码。
+
 ## 错误处理
 
 应用包含完善的错误处理机制：
