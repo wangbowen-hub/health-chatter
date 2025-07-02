@@ -175,6 +175,11 @@ class DifyApiService {
     };
 
     try {
+      console.log('发送请求到 Dify API:', {
+        url: `${this.config.baseUrl}/chat-messages`,
+        body: requestBody
+      });
+
       const response = await fetch(`${this.config.baseUrl}/chat-messages`, {
         method: 'POST',
         headers: {
@@ -185,10 +190,17 @@ class DifyApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`Dify API错误: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Dify API 响应错误:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Dify API错误: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data: DifyResponse = await response.json();
+      console.log('Dify API 响应成功:', data);
       
       // 保存conversation_id以便后续使用
       if (data.conversation_id) {
@@ -198,6 +210,9 @@ class DifyApiService {
       return data;
     } catch (error) {
       console.error('Dify API调用失败:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('网络请求失败，可能是CORS问题或网络连接问题');
+      }
       throw error;
     }
   }
@@ -252,6 +267,11 @@ class DifyApiService {
     };
 
     try {
+      console.log('发送流式请求到 Dify API:', {
+        url: `${this.config.baseUrl}/chat-messages`,
+        body: requestBody
+      });
+
       const response = await fetch(`${this.config.baseUrl}/chat-messages`, {
         method: 'POST',
         headers: {
@@ -262,8 +282,16 @@ class DifyApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`Dify API错误: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Dify API 流式响应错误:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Dify API错误: ${response.status} ${response.statusText} - ${errorText}`);
       }
+
+      console.log('Dify API 流式响应开始');
 
       const reader = response.body?.getReader();
       if (!reader) {

@@ -6,7 +6,14 @@ const getApiKey = (): string => {
 };
 
 const getBaseUrl = (): string => {
-  return import.meta.env.VITE_DIFY_BASE_URL || 'https://api.dify.ai/v1';
+  const configuredUrl = import.meta.env.VITE_DIFY_BASE_URL || 'https://api.dify.ai/v1';
+  
+  // 在开发环境下，如果配置的是 dify.trialdata.cn，使用代理路径
+  if (import.meta.env.DEV && configuredUrl.includes('dify.trialdata.cn')) {
+    return '/api/dify/v1';
+  }
+  
+  return configuredUrl;
 };
 
 // 创建Dify API服务实例
@@ -18,9 +25,12 @@ export const createDifyService = (): DifyApiService | null => {
     return null;
   }
 
+  const baseUrl = getBaseUrl();
+  console.log('Dify API 配置:', { baseUrl, hasApiKey: !!apiKey });
+
   return new DifyApiService({
     apiKey,
-    baseUrl: getBaseUrl(),
+    baseUrl,
   });
 };
 

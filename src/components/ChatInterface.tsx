@@ -270,9 +270,21 @@ export const ChatInterface: React.FC = () => {
           );
         } catch (error) {
           console.error('AI回复生成失败:', error);
-          const errorMessage: Message = {
+          let errorMessage = "抱歉，生成回复时出现错误。";
+          
+          if (error instanceof Error) {
+            if (error.message.includes('fetch')) {
+              errorMessage = "网络连接失败，请检查您的网络连接或联系管理员。";
+            } else if (error.message.includes('401')) {
+              errorMessage = "API密钥无效，请检查配置。";
+            } else if (error.message.includes('CORS')) {
+              errorMessage = "跨域请求被阻止，请联系管理员配置服务器。";
+            }
+          }
+          
+          const errorMsg: Message = {
             id: generateId(),
-            content: "抱歉，生成回复时出现错误，请稍后重试。",
+            content: errorMessage,
             role: 'assistant',
             timestamp: new Date(),
           };
@@ -281,7 +293,7 @@ export const ChatInterface: React.FC = () => {
             session.id === newSession.id 
               ? { 
                   ...session, 
-                  messages: [...session.messages, errorMessage],
+                  messages: [...session.messages, errorMsg],
                   updatedAt: new Date()
                 }
               : session
@@ -370,18 +382,30 @@ export const ChatInterface: React.FC = () => {
         );
       } catch (error) {
         console.error('AI回复生成失败:', error);
-        const errorMessage: Message = {
+        let errorMessage = "抱歉，生成回复时出现错误。";
+        
+        if (error instanceof Error) {
+          if (error.message.includes('fetch')) {
+            errorMessage = "网络连接失败，请检查您的网络连接或联系管理员。";
+          } else if (error.message.includes('401')) {
+            errorMessage = "API密钥无效，请检查配置。";
+          } else if (error.message.includes('CORS')) {
+            errorMessage = "跨域请求被阻止，请联系管理员配置服务器。";
+          }
+        }
+        
+        const errorMsg: Message = {
           id: generateId(),
-          content: "抱歉，生成回复时出现错误，请稍后重试。",
+          content: errorMessage,
           role: 'assistant',
           timestamp: new Date(),
         };
-
+        
         setSessions(prev => prev.map(session => 
           session.id === currentSessionId 
             ? { 
                 ...session, 
-                messages: [...session.messages, errorMessage],
+                messages: [...session.messages, errorMsg],
                 updatedAt: new Date()
               }
             : session
